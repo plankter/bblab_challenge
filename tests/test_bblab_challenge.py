@@ -7,7 +7,7 @@ import pytest
 
 from click.testing import CliRunner
 
-from bblab_challenge import bblab_challenge
+from bblab_challenge import tools
 from bblab_challenge import cli
 
 
