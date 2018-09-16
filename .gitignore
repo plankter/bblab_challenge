@@ -104,6 +104,3 @@ ENV/
 
 # JetBrains IDE settings
 .idea
-
-# output
-output/
