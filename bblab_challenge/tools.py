@@ -3,8 +3,6 @@
 """Main module."""
 
 from collections import defaultdict
-from os import path
-from typing import List, Union
 import numpy as np
 import cv2 as cv
 from skimage.io import imread
@@ -42,7 +40,8 @@ def get_bgra(red: np.ndarray, green: np.ndarray, blue: np.ndarray,
              red_amp: float = 1.0, green_amp: float = 1.0,
              blue_amp: float = 1.0) -> np.ndarray:
     """
-    Generates an image in BGRA format with alpha channel from separate layers
+    Generates an image in BGRA format with alpha channel from separate layers.
+    CAUTION: OpenCV library operates in BGR mode by default, not RGB!
 
     :param red: red layer
     :param green: green layer
@@ -64,7 +63,8 @@ def get_rgba(red: np.ndarray, green: np.ndarray, blue: np.ndarray,
              red_amp: float = 1.0, green_amp: float = 1.0,
              blue_amp: float = 1.0) -> np.ndarray:
     """
-    Generates an image in BGRA format with alpha channel from separate layers
+    Generates an image in RGBA format with alpha channel from separate layers. Useful for displaying inline images in
+    Jupyter notebooks as they should be provided in RGB mode.
 
     :param red: red layer
     :param green: green layer
@@ -110,14 +110,21 @@ def prepare_image(src: np.ndarray, mask: np.ndarray) -> np.ndarray:
 
 
 def calculate_markers(src: np.ndarray, mask: np.ndarray) -> np.ndarray:
+    """
+    Performs image segmentation via OpenCV library
+
+    :param src: source image
+    :param mask: mask image
+    :rtype: NumPy ndarray
+    """
     gray = cv.bitwise_not(mask.copy())
     ret, thresh = cv.threshold(gray, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU)
 
-    # noise removal
+    # Noise removal
     kernel = np.ones((3, 3), np.uint8)
     opening = cv.morphologyEx(thresh, cv.MORPH_OPEN, kernel, iterations=2)
 
-    # sure background area
+    # Sure background area
     sure_bg = cv.dilate(opening, kernel, iterations=2)
 
     # Finding sure foreground area
@@ -140,13 +147,14 @@ def calculate_markers(src: np.ndarray, mask: np.ndarray) -> np.ndarray:
     return markers
 
 
-def calculate_means(red: np.ndarray, green: np.ndarray, blue: np.ndarray, markers: np.ndarray) -> List[List[Union[int, float]]]:
+def calculate_means(red: np.ndarray, green: np.ndarray, blue: np.ndarray, markers: np.ndarray):
     """
-    Converts source image from BGRA to BGR format and sets Numpy type to uint8 for a proper image segmentation
+    Calculates means for each channel (RGB) for each recognized cell
 
-    :param src: source image
-    :param mask: mask image
-    :rtype: NumPy ndarray
+    :param red: red layer
+    :param green: green layer
+    :param blue: blue layer
+    :param markers: cell markers
     """
     r_dict = defaultdict(list)
     g_dict = defaultdict(list)
@@ -165,25 +173,3 @@ def calculate_means(red: np.ndarray, green: np.ndarray, blue: np.ndarray, marker
         b = sum(b_dict[label]) / len(b_dict[label])
         result.append([label, r, g, b])
     return result
-
-
-mask = load_mask(path.join(path.dirname(__file__), '../data/single-cell-mask/single_cell_mask.tiff'))
-image_height, image_width = mask.shape
-red = load_layer(path.join(path.dirname(__file__), '../data/images/Fibronectin(Dy163Di).tiff'), image_width, image_height)
-green = load_layer(path.join(path.dirname(__file__), '../data/images/E-cadherin(Er167Di).tiff'), image_width, image_height)
-blue = load_layer(path.join(path.dirname(__file__), '../data/images/HistoneH3(Yb176Di).tiff'), image_width, image_height)
-
-bgra = get_bgra(red, green, blue, 5.0, 5.0, 5.0)
-cv.imwrite('../output/bgra.png', bgra)
-masked_bgra = apply_mask(bgra, mask)
-cv.imwrite('../output/masked_bgra.png', masked_bgra)
-
-markers = calculate_markers(masked_bgra, mask)
-cv.imwrite('../output/markers.png', markers)
-
-img = prepare_image(masked_bgra, mask)
-img[markers == -1] = [255, 0, 0]
-cv.imwrite('../output/final.png', img)
-
-means = calculate_means(red, green, blue, markers)
-np.savetxt('../output/means.csv', means, header='cell_id;red;green;blue', fmt="%i;%1.4f;%1.4f;%1.4f", comments='')

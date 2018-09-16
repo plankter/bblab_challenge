@@ -7,3 +7,5 @@ __email__ = 'anton.rau@gmail.com'
 __version__ = '0.1.0'
 
 from bblab_challenge.tools import *
+
+# flake8: noqa

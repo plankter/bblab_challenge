@@ -36,7 +36,7 @@ setup(
     description="BBLab technical challenge",
     entry_points={
         'console_scripts': [
-            'bblab_challenge=bblab_challenge.cli:main',
+            'bblab=bblab_challenge.cli:cli',
         ],
     },
     install_requires=requirements,
