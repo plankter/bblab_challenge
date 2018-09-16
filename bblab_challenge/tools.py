@@ -2,7 +2,9 @@
 
 """Main module."""
 
+from collections import defaultdict
 from os import path
+from typing import List, Union
 import numpy as np
 import cv2 as cv
 from skimage.io import imread
@@ -106,6 +108,7 @@ def prepare_image(src: np.ndarray, mask: np.ndarray) -> np.ndarray:
     result = cv.bitwise_and(rgb, rgb, mask=mask)
     return result
 
+
 def calculate_markers(src: np.ndarray, mask: np.ndarray) -> np.ndarray:
     gray = cv.bitwise_not(mask.copy())
     ret, thresh = cv.threshold(gray, 0, 255, cv.THRESH_BINARY_INV + cv.THRESH_OTSU)
@@ -137,6 +140,33 @@ def calculate_markers(src: np.ndarray, mask: np.ndarray) -> np.ndarray:
     return markers
 
 
+def calculate_means(red: np.ndarray, green: np.ndarray, blue: np.ndarray, markers: np.ndarray) -> List[List[Union[int, float]]]:
+    """
+    Converts source image from BGRA to BGR format and sets Numpy type to uint8 for a proper image segmentation
+
+    :param src: source image
+    :param mask: mask image
+    :rtype: NumPy ndarray
+    """
+    r_dict = defaultdict(list)
+    g_dict = defaultdict(list)
+    b_dict = defaultdict(list)
+    for i, row in enumerate(markers):
+        for j, label in enumerate(row):
+            if label != -1 and label != 1:
+                r_dict[label].append(red[i, j])
+                g_dict[label].append(green[i, j])
+                b_dict[label].append(blue[i, j])
+
+    result = []
+    for label in r_dict.keys():
+        r = sum(r_dict[label]) / len(r_dict[label])
+        g = sum(g_dict[label]) / len(g_dict[label])
+        b = sum(b_dict[label]) / len(b_dict[label])
+        result.append([label, r, g, b])
+    return result
+
+
 mask = load_mask(path.join(path.dirname(__file__), '../data/single-cell-mask/single_cell_mask.tiff'))
 image_height, image_width = mask.shape
 red = load_layer(path.join(path.dirname(__file__), '../data/images/Fibronectin(Dy163Di).tiff'), image_width, image_height)
@@ -154,3 +184,6 @@ cv.imwrite('../output/markers.png', markers)
 img = prepare_image(masked_bgra, mask)
 img[markers == -1] = [255, 0, 0]
 cv.imwrite('../output/final.png', img)
+
+means = calculate_means(red, green, blue, markers)
+np.savetxt('../output/means.csv', means, header='cell_id;red;green;blue', fmt="%i;%1.4f;%1.4f;%1.4f", comments='')
