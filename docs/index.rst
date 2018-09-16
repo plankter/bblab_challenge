@@ -13,6 +13,9 @@ Welcome to BBlab technical challenge's documentation!
    authors
    history
 
+.. automodule:: bblab_challenge
+   :members:
+
 Indices and tables
 ==================
 * :ref:`genindex`
